@@ -29,6 +29,8 @@ adc1_channel_t SCT013SensorChannels[] = { ADC1_CHANNEL_0, ADC1_CHANNEL_3, ADC1_C
 int readings[NUM_OF_SCT013_SENSORS][NUM_OF_READINGS];
 int average[NUM_OF_SCT013_SENSORS];
 
+unsigned int previousSocketSendTime = 0;
+unsigned int socketSendTime = 2000;
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -67,7 +69,7 @@ void initWiFi() {
 
 void initWebSocket() {
 	int startTime = millis();
-	Serial.printf("[%s] [%d] Initializing WebSocket connection ... ", "initWebSocket", millis());
+	Serial.printf("[%s] [%d] Initializing WebSocket connection\n", "initWebSocket", millis());
 	webSocketClient.begin(host, WEBSOCKET_PORT, url);
 	delay(1000);
 	webSocketClient.onEvent(webSocketEvent);
@@ -93,24 +95,15 @@ void checkWiFi() {
 	}
 }
 
-
-
-void printAverage() {
-	for (int i = 0; i < NUM_OF_SCT013_SENSORS; i++)
-		Serial.printf("Average: %d\n", average[i]);
-}
-
-unsigned int previousSocketSendTime = 0;
-unsigned int socketSendTime = 2000;
 void getReadings() {
 	if ((millis() - previousSocketSendTime) > socketSendTime) {
 		checkWiFi();
 		Serial.println("------------------------------------------------------");
-		Serial.println("Getting readings");
+		Serial.printf("[%s] [%d] Getting readings\n", "getReadings", millis());
 		for (int sensor = 0; sensor < NUM_OF_SCT013_SENSORS; sensor++) {
 			int delta = 0;
 			int count = 0;
-			Serial.printf("Getting readings from Sensor %d\n", sensor + 1);
+			Serial.printf("[%s] [%d] Getting readings from Sensor %d\n", "getReadings", millis(), sensor + 1);
 			do {
 				int min_reading = INT_MAX;
 				int max_reading = INT_MIN;
@@ -125,16 +118,16 @@ void getReadings() {
 					//Serial.printf("%d. %d\n", reading, val);
 				}
 				delta = max_reading - min_reading;
-				Serial.printf("Min Reading: %d\n", min_reading);
-				Serial.printf("Max Reading: %d\n", max_reading);
-				Serial.printf("Delta: %d\n", delta);
-				Serial.println("---------------------------------");
+				Serial.printf("[%s] [%d] Min Reading: %d\n", "getReadings", millis(), min_reading);
+				Serial.printf("[%s] [%d] Max Reading: %d\n", "getReadings", millis(), max_reading);
+				Serial.printf("[%s] [%d] Delta: %d\n", "getReadings", millis(), delta);
 				count++;
 			} while (delta > MAX_DELTA && count < MAX_NUM_OF_TRIES);
 			if (delta > MAX_DELTA)
-				Serial.println("Sensor reading failed, max number of tries exeded");
+				Serial.printf("[%s] [%d] Sensor reading failed, max number of tries exeded\n", "getReadings", millis());
 			else
 				Serial.printf("[%s] [%d] OK\n", "getReadings", millis());
+			Serial.println("---------------------------------");
 		}
 		getAverage();
 		handleWebsocket();
@@ -155,26 +148,9 @@ void getAverage() {
 	printAverage();
 }
 
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-	//Serial.print("Trying to open a WebSocket .");
-	//while (type != WStype_CONNECTED) {
-	//	Serial.print(".");
-	//	delay(100);
-	//}
-	//Serial.println(" OK");
-	switch (type) {
-	case WStype_DISCONNECTED:
-		Serial.printf("[WebSocket] Disconnected!\n");
-		break;
-	case WStype_CONNECTED:
-		Serial.printf("[WebSocket] Connected to url: %s\n", payload);
-		webSocketClient.sendTXT("Connected");
-		break;
-	case WStype_TEXT:
-		Serial.printf("[WebSocket] get text: %s\n", payload);
-		// webSocket.sendTXT("message here");
-		break;
-	}
+void printAverage() {
+	for (int i = 0; i < NUM_OF_SCT013_SENSORS; i++)
+		Serial.printf("[%s] [%d] Average: %d\n", "printAverage", millis(), average[i]);
 }
 
 void handleWebsocket() {
@@ -187,4 +163,26 @@ void handleWebsocket() {
 	previousSocketSendTime = millis();
 	Serial.printf("[%s] [%d] Sending OK flag\n", "handleWebSocket", millis());
 	webSocketClient.sendTXT("OK");
+}
+
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+	//Serial.print("Trying to open a WebSocket .");
+	//while (type != WStype_CONNECTED) {
+	//	Serial.print(".");
+	//	delay(100);
+	//}
+	//Serial.println(" OK");
+	switch (type) {
+	case WStype_DISCONNECTED:
+		Serial.printf("[%s] [%d] Disconnected!\n", "webSocketEvent", millis());
+		break;
+	case WStype_CONNECTED:
+		Serial.printf("[%s] [%d] Connected to url: %s\n", "webSocketEvent", millis(), payload);
+		webSocketClient.sendTXT("hi");
+		break;
+	case WStype_TEXT:
+		Serial.printf("[%s] [%d] get text: %s\n", "webSocketEvent", millis(), payload);
+		// webSocket.sendTXT("message here");
+		break;
+	}
 }

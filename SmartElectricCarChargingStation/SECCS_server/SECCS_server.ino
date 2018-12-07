@@ -43,50 +43,48 @@ void setup()
 }
 
 void initDisplay() {
+	Serial.printf("[%s][%d] Initializing LCD Display ... ", "initDisplay", millis());
 	Display.begin();
 	Display.fillScreen(WROVER_BLACK);
+	Serial.printf(" OK\n");
 }
 
 void initWiFi() {
-	Serial.print("Initializing Access Point .");
+	Serial.printf("[%s] [%d] Initializing Access Point .", "initWiFi", millis());
 	while (!WiFi.softAP(ssid, password)) {
 		delay(100);
-		Serial.print(".");
+		Serial.printf(".");
 	}
-	Serial.println(" OK");
+	Serial.printf(" OK\n");
+	Serial.printf("[%s][%d] AP IP: ", "initWiFi", millis());
 	Serial.println(WiFi.softAPIP());
 }
 
 void initWebSocket() {
-	Serial.print("Initializing WebSocket ... ");
+	Serial.printf("[%s] [%d] Initializing WebSocket ... ", "initWebSocket", millis());
 	webSocket.begin();
 	webSocket.onEvent(webSocketEvent);
-	Serial.println("OK");
+	Serial.printf(" OK\n");
 }
 // Add the main program code into the continuous loop() function
 void loop()
 {
 	webSocket.loop();
-	requestClientReadings();
 }
 
-void pingClients() {
-	Serial.println(webSocket.connectedClients());
-}
-
-void requestClientReadings() {
-
-}
+//void pingClients() {
+//	Serial.println(webSocket.connectedClients());
+//}
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
 
 	switch (type) {
 	case WStype_DISCONNECTED:
-		Serial.printf("[%u] Disconnected!\n", num);
+		Serial.printf("[%s] [%d] [%u] Disconnected!\n", "webSocketEvent", millis(), num);
 		break;
 	case WStype_CONNECTED:{
 		IPAddress ip = webSocket.remoteIP(num);
-		Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+		Serial.printf("[%s] [%d] [%u] Connected from %d.%d.%d.%d url: %s\n", "webSocketEvent", millis(), num, ip[0], ip[1], ip[2], ip[3], payload);
 
 		// send message to client
 		webSocket.sendTXT(num, "Connected");
@@ -98,18 +96,24 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 		if (tempPayload == "OK") {
 			refreshLCD();
 		}
+		else if (tempPayload == "hi") {
+			Serial.printf("[%s] [%d] New WebSocket Connection open\n", "webSocketEvent", millis());
+		}
 		else {
 			//const char delim[2] = ":";
-			Serial.println((char *)payload);
+			//Serial.println((char *)payload);
+			Serial.printf("[%s] [%d] Splitting payload: \"%s\" to index and value\n", "webSocketEvent", millis(), payload);
 			char *token;
 			token = strtok((char *)payload, ":");
 			int index;
 			index = (String(token).toInt());
-			Serial.print(index);
+			//Serial.print(index);
 			token = strtok(NULL, ":");
 			int value;
 			value = String(token).toInt();
-			Serial.println(value);
+			//Serial.println(value);
+			
+			Serial.printf("[%s] [%d] Index: %d | value: %d\n", "webSocketEvent", millis(), index, value);
 			average[index] = value;
 		}
 		break;
@@ -123,13 +127,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 	}
 	//printAverage();
 	refreshLCD();
-}
-
-String getStringPayload(uint8_t * payload, size_t length) {
-	String temp;
-	for (int i = 0; i < length; temp += payload[i++]);
-	Serial.println(temp);
-	return temp;
 }
 
 void refreshLCD() {
@@ -148,14 +145,14 @@ void refreshLCD() {
 
 }
 
-void printAverage() {
-	for (int i = 0; i < NUM_OF_SCT013_SENSORS; i++)
-		Serial.printf("| %d ", average[i]);
-	Serial.println("|");
-}
+//void printAverage() {
+//	for (int i = 0; i < NUM_OF_SCT013_SENSORS; i++)
+//		Serial.printf("| %d ", average[i]);
+//	Serial.println("|");
+//}
 
 void increaseCounter() {
 	interruptCounter++;
 	kWhMeter = interruptCounter / 1000.0;
-	Serial.printf("Number of interrupts: %d / kWh: %.3f\n", interruptCounter, kWhMeter);
+	Serial.printf("[%s] [%d] Number of interrupts: %d / kWh: %.3f\n", "increaseCounter", millis(), interruptCounter, kWhMeter);
 }
